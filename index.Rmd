@@ -1,0 +1,123 @@
+---
+title: "<center><div class='mytitle'>Grásleppa 2020</div></center>"
+author: "<center><div class='mysubtitle'>Unnið upp úr gögnum frá Fiskistofu</div></center>"
+output:
+  html_document:
+    includes:
+      after_body: footer.html
+      before_body: header.html
+    toc: false
+pagetitle: Grásleppa-landanir
+css: styles.css
+---
+
+
+<div class="mycontent">
+
+<br>
+
+Þessi gögn voru tekin saman 18. maí, áður en innri-Breiðafjörður var opnaður.
+
+<br>
+
+
+```{r pakkar, include=FALSE}
+library(plyr)
+library(tidyverse)
+```
+
+
+```{r gogn, echo=FALSE}
+allt <- read.table("skjol/allt.txt", sep = '\t',header = TRUE,encoding = "UTF-8")
+allt$Ár <- format(strptime(allt$date,"%d.%m.%Y"),'%Y')
+allt$date <- as.Date(allt$date,"%d.%m.%Y")
+gras <- allt[allt$Fisktegund=="Grásleppa" & allt$gear=="Grásleppunet",] # gras er grásleppa í grásleppunet. Ekkert annað
+gras$harbour <- factor(gras$harbour) #losna við levelin eftir subsettið
+smabatar <- allt[allt$skip %in% gras$skip,] # smabatar eru bara þeir bátar sem lagt hafa grásleppunet og allur þeirra afli
+smabatar$harbour <- factor(smabatar$harbour) #losna við levelin eftir subsettið
+
+```
+
+```{r highchart, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+library(highcharter) 
+rass <- ddply(gras,.(harbour, Ár),summarise,Magn=sum(Óslægt)/1000) #Magn grásleppu eftir höfnum og
+rass$Ár <- as.factor(rass$Ár)
+colnames(rass) <- c("Höfn","Ár","Tonn")
+
+ress <- ddply(rass,.(Höfn),summarise,Tonn=mean(Tonn))
+ress <- ress[order(ress$Tonn, decreasing = TRUE),][1:20,] #Taka út smærri/aflaminni grásleppuhafnir
+ress$Höfn <- factor(ress$Höfn)
+rass <- rass[rass$Höfn %in% ress$Höfn,]
+
+# Set highcharter options
+options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 0)))
+
+hc <- rass %>% 
+  hchart(
+    'column', hcaes(x = 'Höfn', y = 'Tonn', group = 'Ár')
+    ) %>%
+  hc_colors(c('#ca0020','#f4a582','#92c5de','#0571b0')) %>% 
+  hc_legend(align = "right", verticalAlign = "top",
+            layout = "vertical", x = 0, y = 100) %>% 
+  hc_title(text = "Grásleppa",
+           margin = 20, align = "left") %>% 
+  hc_subtitle(text = "Landanir á grásleppu eftir höfnum (20 stærstu)",
+              align = "left",
+              style = list(color = "#2166ac", fontWeight = "bold"))  
+
+hc %>% hc_add_theme(hc_theme_538())
+```
+
+
+```{r medalGogn, echo=FALSE, message=FALSE, warning=FALSE}
+fjoldihafnir=ddply(gras,.(Ár,harbour),summarize,N=length(names(table(as.factor(id)))),"Magn"=sum(Óslægt)/1000,`Magn/komunr`=round(Magn/as.numeric(N),2))
+colnames(fjoldihafnir) <- c("Ár","Höfn","Fjöldi báta","Magn", "Magn/komunr")
+#  (hvert komunúmer er löndun)
+medallondun <- ddply(fjoldihafnir,.(Ár),summarise,`Meðallöndun (tonn)` = round(mean(`Magn/komunr`),2))
+```
+
+# Meðallöndun yfir allt landið á milli ára
+```{r medallondunTafla, echo=FALSE, message=FALSE, warning=FALSE}
+
+
+hc <- medallondun %>% 
+  hchart(
+    'column', hcaes(x = 'Ár', y = '`Meðallöndun (tonn)`')
+    ) %>%
+  hc_colors(c('#ca0020','#f4a582','#92c5de','#0571b0')) %>% 
+  hc_legend(align = "right", verticalAlign = "top",
+            layout = "vertical", x = 0, y = 100) %>% 
+  hc_title(text = "Grásleppa",
+           margin = 20, align = "left") %>% 
+  hc_subtitle(text = "Magn á hverja löndun",
+              align = "left",
+              style = list(color = "#2166ac", fontWeight = "bold"))  
+
+hc %>% hc_add_theme(hc_theme_538())
+```
+
+# Meðalveiði á löndun eftir höfnum
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 0)))
+
+hc <- fjoldihafnir %>% 
+  hchart(
+    'column', hcaes(x = 'Höfn', y = '`Magn/komunr`', group = 'Ár')
+    ) %>%
+  hc_colors(c('#ca0020','#f4a582','#92c5de','#0571b0')) %>% 
+  hc_legend(align = "right", verticalAlign = "top",
+            layout = "vertical", x = 0, y = 100) %>% 
+  hc_title(text = "Grásleppa",
+           margin = 20, align = "left") %>% 
+  hc_subtitle(text = "Magn á hverja löndun",
+              align = "left",
+              style = list(color = "#2166ac", fontWeight = "bold"))  
+
+hc %>% hc_add_theme(hc_theme_538())
+```
+
+
+<br><br>
+
+</div>
