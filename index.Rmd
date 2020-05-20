@@ -16,7 +16,8 @@ css: styles.css
 
 <br>
 
-Þessi gögn voru tekin saman 18. maí, áður en innri-Breiðafjörður var opnaður.
+*Þessi gögn voru tekin saman 18. maí, áður en innri-Breiðafjörður var opnaður.*
+
 
 <br>
 
@@ -89,14 +90,14 @@ hc <- medallondun %>%
             layout = "vertical", x = 0, y = 100) %>% 
   hc_title(text = "Grásleppa",
            margin = 20, align = "left") %>% 
-  hc_subtitle(text = "Magn á hverja löndun",
+  hc_subtitle(text = "Magn í meðallöndun",
               align = "left",
               style = list(color = "#2166ac", fontWeight = "bold"))  
 
 hc %>% hc_add_theme(hc_theme_538())
 ```
 
-# Meðalveiði á löndun eftir höfnum
+# Meðallöndun eftir höfnum
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 0)))
@@ -107,12 +108,7 @@ hc <- fjoldihafnir %>%
     ) %>%
   hc_colors(c('#ca0020','#f4a582','#92c5de','#0571b0')) %>% 
   hc_legend(align = "right", verticalAlign = "top",
-            layout = "vertical", x = 0, y = 100) %>% 
-  hc_title(text = "Grásleppa",
-           margin = 20, align = "left") %>% 
-  hc_subtitle(text = "Magn á hverja löndun",
-              align = "left",
-              style = list(color = "#2166ac", fontWeight = "bold"))  
+            layout = "vertical", x = 0, y = 100)
 
 hc %>% hc_add_theme(hc_theme_538())
 ```
