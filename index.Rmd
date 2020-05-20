@@ -70,10 +70,10 @@ hc %>% hc_add_theme(hc_theme_538())
 
 
 ```{r medalGogn, echo=FALSE, message=FALSE, warning=FALSE}
-fjoldihafnir=ddply(gras,.(Ár,harbour),summarize,N=length(names(table(as.factor(id)))),"Magn"=sum(Óslægt)/1000,`Magn/komunr`=round(Magn/as.numeric(N),2))
-colnames(fjoldihafnir) <- c("Ár","Höfn","Fjöldi báta","Magn", "Magn/komunr")
+fjoldihafnir=ddply(gras,.(Ár,harbour),summarize,N=length(names(table(as.factor(id)))),"Magn"=sum(Óslægt)/1000,`Magn/komunr (tonn)`=round(Magn/as.numeric(N),2))
+colnames(fjoldihafnir) <- c("Ár","Höfn","Fjöldi báta","Magn", "Magn/komunr (tonn)")
 #  (hvert komunúmer er löndun)
-medallondun <- ddply(fjoldihafnir,.(Ár),summarise,`Meðallöndun (tonn)` = round(mean(`Magn/komunr`),2))
+medallondun <- ddply(fjoldihafnir,.(Ár),summarise,`Meðallöndun (tonn)` = round(mean(`Magn/komunr (tonn)`),2))
 ```
 
 # Meðallöndun yfir allt landið á milli ára
@@ -103,7 +103,7 @@ options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 0)))
 
 hc <- fjoldihafnir %>% 
   hchart(
-    'column', hcaes(x = 'Höfn', y = '`Magn/komunr`', group = 'Ár')
+    'column', hcaes(x = 'Höfn', y = '`Magn/komunr (tonn)`', group = 'Ár')
     ) %>%
   hc_colors(c('#ca0020','#f4a582','#92c5de','#0571b0')) %>% 
   hc_legend(align = "right", verticalAlign = "top",
