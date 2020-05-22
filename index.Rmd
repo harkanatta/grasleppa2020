@@ -34,8 +34,22 @@ allt$Ár <- format(strptime(allt$date,"%d.%m.%Y"),'%Y')
 allt$date <- as.Date(allt$date,"%d.%m.%Y")
 gras <- allt[allt$Fisktegund=="Grásleppa" & allt$gear=="Grásleppunet",] # gras er grásleppa í grásleppunet. Ekkert annað
 gras$harbour <- factor(gras$harbour) #losna við levelin eftir subsettið
-smabatar <- allt[allt$skip %in% gras$skip,] # smabatar eru bara þeir bátar sem lagt hafa grásleppunet og allur þeirra afli
-smabatar$harbour <- factor(smabatar$harbour) #losna við levelin eftir subsettið
+#smabatar <- allt[allt$skip %in% gras$skip,] # smabatar eru bara þeir bátar sem lagt hafa grásleppunet og allur þeirra afli
+#smabatar$harbour <- factor(smabatar$harbour) #losna við levelin eftir subsettið
+gras$svaedi <- ifelse(gras$harbour %in% levels(gras$harbour)[c(10,19,21,27,39)],"Húnaflói",
+       ifelse(gras$harbour %in% levels(gras$harbour)[c(1,15,17,22,24,33,35)],"Faxaflói og Suðurnes",
+              ifelse(gras$harbour %in% levels(gras$harbour)[c(7,16,29,32,34,40,41)],"Breiðafjörður",
+                     ifelse(gras$harbour %in% levels(gras$harbour)[c(4,12,30,42)],"Vestfirðir",
+                            ifelse(gras$harbour %in% levels(gras$harbour)[c(18,36)],"Skagafjörður",
+                                   ifelse(gras$harbour %in% levels(gras$harbour)[c(2,8,13,14,28,38)],"Eyjafjörður",
+                                          ifelse(gras$harbour %in% levels(gras$harbour)[c(3,20,23,31,43,44)],"Norð-Austurland","Austurland")))))))
+
+gras$svaedi2 <- ifelse(gras$harbour %in% levels(gras$harbour)[c(10,19,21,27,39,18,36)],"Norðurland vestra",
+       ifelse(gras$harbour %in% levels(gras$harbour)[c(1,15,17,22,24,33,35)],"Faxaflói og Suðurnes",
+              ifelse(gras$harbour %in% levels(gras$harbour)[c(7,16,29,32,34,40,41,4,12,30,42)],"Breiðafjörður og Vestfirðir",
+                                   ifelse(gras$harbour %in% levels(gras$harbour)[c(2,8,13,14,28,38)],"Norðurland",
+                                          ifelse(gras$harbour %in% levels(gras$harbour)[c(3,20,23,31,43,44)],"Norð-Austurland","Austfirðir")))))
+
 
 ```
 
@@ -69,6 +83,39 @@ hc <- rass %>%
 hc %>% hc_add_theme(hc_theme_538())
 ```
 
+```{r landsv, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+mpgg <- ddply(gras[gras$Ár=="2020",],.(svaedi2,harbour),summarise,Magn=sum(Óslægt)/1000)
+categories_grouped <- mpgg %>% 
+    group_by(name = svaedi2) %>% 
+    do(categories = .$harbour) %>% 
+    list_parse()
+highchart() %>% 
+    hc_xAxis(categories = categories_grouped) %>% 
+    hc_add_series(data = mpgg, type = "bar", hcaes(y = Magn, color = svaedi2),
+                  showInLegend = FALSE, name = "Magn (tonn)") %>% 
+  hc_title(text = "Grásleppa",
+           margin = 20, align = "left") %>% 
+  hc_subtitle(text = "Landanir á grásleppu eftir höfnum og landsvæðum til 18. maí, árið 2020",
+              align = "left",
+              style = list(color = "#2166ac", fontWeight = "bold"))  
+```
+
+```{r landsv-B, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+mpgg <- ddply(gras[gras$Ár=="2019",],.(svaedi2,harbour),summarise,Magn=sum(Óslægt)/1000)
+categories_grouped <- mpgg %>% 
+    group_by(name = svaedi2) %>% 
+    do(categories = .$harbour) %>% 
+    list_parse()
+highchart() %>% 
+    hc_xAxis(categories = categories_grouped) %>% 
+    hc_add_series(data = mpgg, type = "bar", hcaes(y = Magn, color = svaedi2),
+                  showInLegend = FALSE, name = "Magn (tonn)") %>% 
+  hc_title(text = "Grásleppa",
+           margin = 20, align = "left") %>% 
+  hc_subtitle(text = "Landanir á grásleppu eftir höfnum og landsvæðum árið 2019",
+              align = "left",
+              style = list(color = "#2166ac", fontWeight = "bold"))  
+```
 
 ```{r medalGogn, echo=FALSE, message=FALSE, warning=FALSE}
 fjoldihafnir=ddply(gras,.(Ár,harbour),summarize,N=length(names(table(as.factor(id)))),"Magn"=sum(Óslægt)/1000,`Magn/komunr (tonn)`=round(Magn/as.numeric(N),2))
