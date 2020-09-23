@@ -16,7 +16,7 @@ css: styles.css
 
 <br>
 
-*Þessi gögn voru tekin saman 18. maí, áður en innri-Breiðafjörður var opnaður.*
+*Tekið saman 11. sept 2020*
 
 
 <br>
@@ -28,28 +28,65 @@ library(tidyverse)
 ```
 
 
-```{r gogn, echo=FALSE}
+```{r gogn, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 allt <- read.table("skjol/allt.txt", sep = '\t',header = TRUE,encoding = "UTF-8")
+allt <- allt[!duplicated(allt),]
 allt$Ár <- format(strptime(allt$date,"%d.%m.%Y"),'%Y')
 allt$date <- as.Date(allt$date,"%d.%m.%Y")
 gras <- allt[allt$Fisktegund=="Grásleppa" & allt$gear=="Grásleppunet",] # gras er grásleppa í grásleppunet. Ekkert annað
 gras$harbour <- factor(gras$harbour) #losna við levelin eftir subsettið
 #smabatar <- allt[allt$skip %in% gras$skip,] # smabatar eru bara þeir bátar sem lagt hafa grásleppunet og allur þeirra afli
 #smabatar$harbour <- factor(smabatar$harbour) #losna við levelin eftir subsettið
-gras$svaedi <- ifelse(gras$harbour %in% levels(gras$harbour)[c(10,19,21,27,39)],"Húnaflói",
-       ifelse(gras$harbour %in% levels(gras$harbour)[c(1,15,17,22,24,33,35)],"Faxaflói og Suðurnes",
-              ifelse(gras$harbour %in% levels(gras$harbour)[c(7,16,29,32,34,40,41)],"Breiðafjörður",
-                     ifelse(gras$harbour %in% levels(gras$harbour)[c(4,12,30,42)],"Vestfirðir",
-                            ifelse(gras$harbour %in% levels(gras$harbour)[c(18,36)],"Skagafjörður",
-                                   ifelse(gras$harbour %in% levels(gras$harbour)[c(2,8,13,14,28,38)],"Eyjafjörður",
-                                          ifelse(gras$harbour %in% levels(gras$harbour)[c(3,20,23,31,43,44)],"Norð-Austurland","Austurland")))))))
+
+#Tek út eitt tilvik sem ég rak augun í og er pottþétt vitlaust (sjá allt[allt$id=="718847",])
+
+styttumd <- c("Vestmannaeyjar","Suðurnes","höfuðborgarsvæði", "Austurland","Suðurland","Norðurland eystra","Norðurland vestra","Vestfirðir","Vesturland") #notast í korti neðar í skjalinu
+
+kort <- sf::st_read("C:/Users/valty/Documents/vinna/GIS/lmi/IS50V/IS_50V_MANNVIRKI_170062020/IS_50V_MANNVIRKI_170062020.gpkg")
+strandlina <- sf::st_read("C:/Users/valty/Documents/vinna/GIS/lmi/IS50V/IS_50V_STRANDLINA_170062020/IS_50V_STRANDLINA_170062020.gpkg")
+mannv <- sf::st_read("C:/Users/valty/Documents/vinna/GIS/lmi/IS50V/IS_50V_MANNVIRKI_170062020/IS_50V_MANNVIRKI_170062020.gpkg",layer="mannvirki_flakar")
+mannvp <- sf::st_read("C:/Users/valty/Documents/vinna/GIS/lmi/IS50V/IS_50V_MANNVIRKI_170062020/IS_50V_MANNVIRKI_170062020.gpkg",layer="mannvirki_punktar")
+umd <- sf::st_read("C:/Users/valty/Documents/vinna/GIS/lmi/IS50V/IS_50V_MORK_170062020/IS_50V_MORK_170062020.gpkg",layer="mork_umdaemi_flakar")
+umd$umdaemisyslumanns <- styttumd 
+
+fjoldihafnir=ddply(gras,.(Ár,harbour),summarize,N=length(names(table(as.factor(id)))),"Magn"=sum(Óslægt)/1000,`Magn/komunr (tonn)`=round(Magn/as.numeric(N),2))
+colnames(fjoldihafnir) <- c("Ár","Höfn","Fjöldi báta","Magn", "Magn/komunr (tonn)")
+#  (hvert komunúmer er löndun)
+
+
+medallondun <- ddply(gras,.(Ár),summarize,N=length(names(table(as.factor(id)))),"Magn"=sum(Óslægt)/1000,`Meðallöndun (tonn)`=round(Magn/as.numeric(N),2)) %>% select(1,4) # aðeinssíðasti dálkurinn
+
+fj2020 <- fjoldihafnir[fjoldihafnir$Ár==2020,]
+#kort$Tonn <- fj2020$`Fjöldi báta`[match(kort$nafnfitju,as.character(fj2020$Höfn), nomatch=NA)]
+A <- ddply(gras[gras$Ár==2020,],.(harbour),summarise,Tonn=sum(Óslægt)/1000)
+kort$Tonn <- A$Tonn[match(kort$nafnfitju,as.character(A$harbour), nomatch=NA)]
+
+#gras$svaedi <- ifelse(is.na(gras$svaedi),NA,NA)
+#table(is.na(gras$svaedi))
+for (i in 1:dim(umd)[1]) {
+  
+SN <- sf::st_intersection(umd[umd$umdaemisyslumanns==styttumd[i],],mannv)
+gras$svaedi[gras$harbour %in% as.character(SN$nafnfitju)] <- styttumd[i]
+
+}
+
+#Því þessar hafnir fundust ekki í IS50V flákunum þá þarf að gera þá manual:
+gras$svaedi[gras$harbour=="Borgarfjörður Eystri"] <- styttumd[4]
+gras$svaedi[gras$harbour=="Mjóifjörður"] <- styttumd[4]
+gras$svaedi[gras$harbour=="Skarðsstöð"] <- styttumd[9]
+gras$svaedi[gras$harbour=="Norðurfjörður"] <- styttumd[8]
+gras$svaedi[gras$harbour=="Brjánslækur"] <- styttumd[8]
+
+A <- ddply(gras[gras$Ár==2020,],.(svaedi),summarise,Tonn=sum(Óslægt)/1000)
+for (i in A$svaedi) {
+  umd$Tonn[umd$umdaemisyslumanns %in% i] <- A$Tonn[A$svaedi==i]
+}
 
 gras$svaedi2 <- ifelse(gras$harbour %in% levels(gras$harbour)[c(10,19,21,27,39,18,36)],"Norðurland vestra",
        ifelse(gras$harbour %in% levels(gras$harbour)[c(1,15,17,22,24,33,35)],"Faxaflói og Suðurnes",
               ifelse(gras$harbour %in% levels(gras$harbour)[c(7,16,29,32,34,40,41,4,12,30,42)],"Breiðafjörður og Vestfirðir",
                                    ifelse(gras$harbour %in% levels(gras$harbour)[c(2,8,13,14,28,38)],"Norðurland",
                                           ifelse(gras$harbour %in% levels(gras$harbour)[c(3,20,23,31,43,44)],"Norð-Austurland","Austfirðir")))))
-
 
 ```
 
@@ -84,23 +121,24 @@ hc %>% hc_add_theme(hc_theme_538())
 ```
 
 ```{r landsv, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
-mpgg <- ddply(gras[gras$Ár=="2020",],.(svaedi2,harbour),summarise,Magn=sum(Óslægt)/1000)
+mpgg <- ddply(gras[gras$Ár=="2020",],.(svaedi,harbour),summarise,Magn=sum(Óslægt)/1000)
 categories_grouped <- mpgg %>% 
-    group_by(name = svaedi2) %>% 
+    group_by(name = svaedi) %>% 
     do(categories = .$harbour) %>% 
     list_parse()
 highchart() %>% 
     hc_xAxis(categories = categories_grouped) %>% 
-    hc_add_series(data = mpgg, type = "bar", hcaes(y = Magn, color = svaedi2),
+    hc_add_series(data = mpgg, type = "bar", hcaes(y = Magn, color = svaedi),
                   showInLegend = FALSE, name = "Magn (tonn)") %>% 
   hc_title(text = "Grásleppa",
            margin = 20, align = "left") %>% 
-  hc_subtitle(text = "Landanir á grásleppu eftir höfnum og landsvæðum til 18. maí, árið 2020",
+  hc_subtitle(text = "Landanir á grásleppu eftir höfnum og landsvæðum árið 2020",
               align = "left",
-              style = list(color = "#2166ac", fontWeight = "bold"))  
+              style = list(color = "#2166ac", fontWeight = "bold")) %>% 
+  hc_size(height = 800)
 ```
 
-```{r landsv-B, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+```{r landsv-B, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE, results='asis'}
 mpgg <- ddply(gras[gras$Ár=="2019",],.(svaedi2,harbour),summarise,Magn=sum(Óslægt)/1000)
 categories_grouped <- mpgg %>% 
     group_by(name = svaedi2) %>% 
@@ -114,14 +152,17 @@ highchart() %>%
            margin = 20, align = "left") %>% 
   hc_subtitle(text = "Landanir á grásleppu eftir höfnum og landsvæðum árið 2019",
               align = "left",
-              style = list(color = "#2166ac", fontWeight = "bold"))  
+              style = list(color = "#2166ac", fontWeight = "bold")) %>% 
+  hc_size(height = 800)
 ```
 
 ```{r medalGogn, echo=FALSE, message=FALSE, warning=FALSE}
 fjoldihafnir=ddply(gras,.(Ár,harbour),summarize,N=length(names(table(as.factor(id)))),"Magn"=sum(Óslægt)/1000,`Magn/komunr (tonn)`=round(Magn/as.numeric(N),2))
 colnames(fjoldihafnir) <- c("Ár","Höfn","Fjöldi báta","Magn", "Magn/komunr (tonn)")
 #  (hvert komunúmer er löndun)
-medallondun <- ddply(fjoldihafnir,.(Ár),summarise,`Meðallöndun (tonn)` = round(mean(`Magn/komunr (tonn)`),2))
+
+
+medallondun <- ddply(gras,.(Ár),summarize,N=length(names(table(as.factor(id)))),"Magn"=sum(Óslægt)/1000,`Meðallöndun (tonn)`=round(Magn/as.numeric(N),2)) %>% select(1,4) # aðeinssíðasti dálkurinn
 ```
 
 # Meðallöndun yfir allt landið á milli ára
@@ -145,7 +186,7 @@ hc %>% hc_add_theme(hc_theme_538())
 ```
 
 # Meðallöndun eftir höfnum
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 0)))
 
@@ -158,6 +199,103 @@ hc <- fjoldihafnir %>%
             layout = "vertical", x = 0, y = 100)
 
 hc %>% hc_add_theme(hc_theme_538())
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+kort$objectid <- kort$nafnfitju
+names(kort$objectid) <- "Höfn"
+kort$objectid[is.na(kort$Tonn)] <- NA
+library(tmap)
+tmap_mode("view")
+tm_basemap(leaflet::providers$Stamen.TerrainBackground) +
+  tm_shape(umd) +
+  tm_text("Tonn") +
+  tm_polygons("umdaemisyslumanns",title="Umdæmi",id="umdaemisyslumanns") +
+#tm_shape(strandlina[strandlina$eyjarsker==1,]) + tm_borders("black", lwd = .5) +
+  tm_shape(kort) +
+  tm_symbols(col = "red", border.col = "red", size = "Tonn", scale = 2, popup.vars = "Tonn") 
+```
+
+```{r gognSmabatar, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+roundUpNice <- function(x, nice=c(1,2,4,5,6,8,10)) {
+  if(length(x) != 1) stop("'x' must be of length 1")
+  10^floor(log10(x)) * nice[[which(x <= 10^floor(log10(x)) * nice)[[1]]]]
+}
+
+smabatar <- allt[allt$skip %in% gras$skip,] # smabatar eru bara þeir bátar sem lagt hafa grásleppunet og allur
+nvsma <- smabatar[smabatar$harbour %in% c("Skagaströnd","Sauðárkrókur","Hofsós","Hvammstangi"),]
+nvsma <- nvsma[nvsma$Ár!="2020" & nvsma$Ár!="2016",]
+gognin <- ddply(nvsma,.(Ár,harbour),summarise,Alls=sum(Óslægt),.drop=F)
+gat <- matrix(gognin$Alls,nrow = length(levels(as.factor(gognin$Ár))),ncol = length(unique(gognin$harbour)), byrow=T, dimnames=list(levels(as.factor(gognin$Ár)),unique(gognin$harbour)))
+
+gognsma <- gognin
+```
+
+```{r barchartA, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+library(RColorBrewer)
+litir <- colorRampPalette(c('#045579', 'white','#d75f07','seashell','#069acc'))(length(dimnames(gat)[[1]]))
+#png(filename="Mynd.png",12,7,"cm",pointsize=6,res=900)
+bp <- barplot(gat, main='Landanir grásleppubáta - allar tegundir og veiðarfæri',ylab='',xlab='',axes=F,beside=TRUE,ylim=c(0,max(gognin$Alls)*1.1))
+#grid(NA,ny = NULL)
+abline(h=seq(0,roundUpNice(1.1*max(gat)),roundUpNice(1.1*max(gat))/5), col = 'lightgray', lty = 3)
+barplot(gat, ylab="Magn (tonn)", beside=TRUE, axes = F, col=litir ,ylim = c(0,max(gognin$Alls)*1.1),add=T);box()
+axis(2,seq(0,roundUpNice(1.1*max(gat)),roundUpNice(1.1*max(gat))/5),labels = seq(0,roundUpNice(1.1*max(gat))/1000,roundUpNice(1.1*max(gat))/5000),las=2)
+legend('topleft', levels(as.factor(gognin$Ár)), fill=litir)
+#dev.off()
+```
+
+```{r gognHagst, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+hagst <- read.csv("skjol/hagstofan.csv",sep = ";")
+hagst <- hagst %>% 
+  mutate(X2019.Alls=as.numeric(X2019.Alls),X2018.Alls=as.numeric(X2018.Alls),X2017.Alls=as.numeric(X2017.Alls))
+#hagst <- hagst[,c(1,2,6:8)]
+heild <- ddply(hagst,.(Löndunarhöfn),summarize,"2017.Alls"=sum(X2017.Alls,na.rm = T),"2018.Alls"=sum(X2018.Alls,na.rm = T),"2019.Alls"=sum(X2019.Alls,na.rm = T))
+#heild <- t(heild)
+rass <- as.matrix(t(heild))[-1,]
+dimnames(rass) <- NULL
+dimnames(rass) <- list(c("2017","2018","2019"),unique(hagst$Löndunarhöfn))
+ress <- as.data.frame(rass)
+ress$Ár <- rownames(ress)
+rownames(ress) <- NULL
+ress <- ress %>%
+  pivot_longer(-Ár , names_to = "harbour", values_to = "Alls")
+ress$Alls <- as.numeric(ress$Alls)
+gognin <- ress
+gat <- matrix(gognin$Alls,nrow = length(levels(as.factor(gognin$Ár))),ncol = length(unique(gognin$harbour)), byrow=T, dimnames=list(levels(as.factor(gognin$Ár)),unique(gognin$harbour)))
+```
+
+```{r barchartB, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+#png(filename="MyndHeild.png",12,7,"cm",pointsize=6,res=900)
+bp <- barplot(gat, main='Heildarlöndun - allar tegundir og veiðarfæri',ylab="Magn (tonn)",xlab='',axes=F,beside=TRUE,ylim=c(0,max(gognin$Alls)*1.1))
+#grid(NA,ny = NULL)
+abline(h=seq(0,roundUpNice(1.1*max(gat)),roundUpNice(1.1*max(gat))/5), col = 'lightgray', lty = 3)
+barplot(gat,  beside=TRUE, axes = F, col=litir ,ylim = c(0,max(gognin$Alls)*1.1),add=T);box()
+axis(2,seq(0,roundUpNice(1.1*max(gat)),roundUpNice(1.1*max(gat))/5),labels = seq(0,roundUpNice(1.1*max(gat))/1000,roundUpNice(1.1*max(gat))/5000),las=2)
+legend('topleft', levels(as.factor(gognin$Ár)), fill=litir)
+#dev.off()
+```
+
+```{r gognHagstB, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+gognin$sma <- gognsma$Alls
+gognin$hlutf <- gognin$sma/gognin$Alls
+gognin <- gognin[,c(1,2,5)]
+colnames(gognin) <- c("Ár", "harbour", "Alls" )
+gat <- matrix(gognin$Alls,nrow = length(levels(as.factor(gognin$Ár))),ncol = length(unique(gognin$harbour)), byrow=T, dimnames=list(levels(as.factor(gognin$Ár)),unique(gognin$harbour)))
+```
+
+```{r barchartC, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+
+#png(filename="MyndHhlutur.png",12,7,"cm",pointsize=6,res=900)
+bp <- barplot(gat, main='Hlutfall löndunar grásleppubáta af heildarlöndun',ylab='',xlab='',axes=F,beside=TRUE,ylim=c(0,max(gognin$Alls)*1.1))
+#grid(NA,ny = NULL)
+abline(h=seq(0,roundUpNice(1.1*max(gat)),roundUpNice(1.1*max(gat))/5), col = 'lightgray', lty = 3)
+barplot(gat, ylab="Magn (tonn)", beside=TRUE, axes = F, col=litir ,ylim = c(0,max(gognin$Alls)*1.1),add=T);box()
+axis(2,seq(0,roundUpNice(1.1*max(gat)),roundUpNice(1.1*max(gat))/5),labels = paste(seq(0,roundUpNice(1.1*max(gat)),roundUpNice(1.1*max(gat))/5)*100,"%") ,las=2)
+legend('topright', levels(as.factor(gognin$Ár)), fill=litir)
+#dev.off()
 ```
 
 
