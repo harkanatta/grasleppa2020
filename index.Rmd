@@ -42,11 +42,11 @@ gras$harbour <- factor(gras$harbour) #losna við levelin eftir subsettið
 
 styttumd <- c("Vestmannaeyjar","Suðurnes","höfuðborgarsvæði", "Austurland","Suðurland","Norðurland eystra","Norðurland vestra","Vestfirðir","Vesturland") #notast í korti neðar í skjalinu
 
-kort <- sf::st_read("C:/Users/valty/Documents/vinna/GIS/lmi/IS50V/IS_50V_MANNVIRKI_170062020/IS_50V_MANNVIRKI_170062020.gpkg")
-strandlina <- sf::st_read("C:/Users/valty/Documents/vinna/GIS/lmi/IS50V/IS_50V_STRANDLINA_170062020/IS_50V_STRANDLINA_170062020.gpkg")
-mannv <- sf::st_read("C:/Users/valty/Documents/vinna/GIS/lmi/IS50V/IS_50V_MANNVIRKI_170062020/IS_50V_MANNVIRKI_170062020.gpkg",layer="mannvirki_flakar")
-mannvp <- sf::st_read("C:/Users/valty/Documents/vinna/GIS/lmi/IS50V/IS_50V_MANNVIRKI_170062020/IS_50V_MANNVIRKI_170062020.gpkg",layer="mannvirki_punktar")
-umd <- sf::st_read("C:/Users/valty/Documents/vinna/GIS/lmi/IS50V/IS_50V_MORK_170062020/IS_50V_MORK_170062020.gpkg",layer="mork_umdaemi_flakar")
+kort <- sf::st_read("skjol/kort/IS_50V_MANNVIRKI_170062020.gpkg")
+strandlina <- sf::st_read("skjol/kort/IS_50V_STRANDLINA_170062020.gpkg")
+mannv <- sf::st_read("skjol/kort/IS_50V_MANNVIRKI_170062020.gpkg",layer="mannvirki_flakar")
+mannvp <- sf::st_read("skjol/kort/IS_50V_MANNVIRKI_170062020.gpkg",layer="mannvirki_punktar")
+umd <- sf::st_read("skjol/kort/IS_50V_MORK_170062020.gpkg",layer="mork_umdaemi_flakar")
 umd$umdaemisyslumanns <- styttumd 
 
 fjoldihafnir=ddply(gras,.(Ár,harbour),summarize,N=length(names(table(as.factor(id)))),"Magn"=sum(Óslægt)/1000,`Magn/komunr (tonn)`=round(Magn/as.numeric(N),2))
